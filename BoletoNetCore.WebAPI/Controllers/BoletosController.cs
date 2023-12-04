@@ -2,7 +2,9 @@
 using BoletoNetCore.WebAPI.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using System.Net;
+using System.Text;
 
 namespace BoletoNetCore.WebAPI.Controllers
 {
@@ -58,7 +60,7 @@ namespace BoletoNetCore.WebAPI.Controllers
 
             try
             {
-                if(dadosBoleto.BeneficiarioResponse.CPFCNPJ == null || (dadosBoleto.BeneficiarioResponse.CPFCNPJ.Length != 11 && dadosBoleto.BeneficiarioResponse.CPFCNPJ.Length != 14))
+                if (dadosBoleto.BeneficiarioResponse.CPFCNPJ == null || (dadosBoleto.BeneficiarioResponse.CPFCNPJ.Length != 11 && dadosBoleto.BeneficiarioResponse.CPFCNPJ.Length != 14))
                 {
                     var retorno = metodosUteis.RetornarErroPersonalizado((int)HttpStatusCode.BadRequest, "Requisição Inválida", "CPF/CNPJ inválido: Utilize 11 dígitos para CPF ou 14 para CNPJ.", "/api/Boletos/BoletoItau");
                     return BadRequest(retorno);
@@ -80,6 +82,98 @@ namespace BoletoNetCore.WebAPI.Controllers
                 var retorno = metodosUteis.RetornarErroPersonalizado((int)HttpStatusCode.InternalServerError, "Requisição Inválida", $"Detalhe do erro: {ex.Message}", string.Empty);
                 return StatusCode(StatusCodes.Status500InternalServerError, retorno);
             }
+        }
+
+        [HttpPost("GerarBoletosPorRemessa")]
+        public IActionResult GerarBoletosPorRemessa(IFormFile fileRaw)
+        {
+            var stream = fileRaw.OpenReadStream();
+
+            byte[] bytes = new byte[stream.Length];
+
+            stream.Read(bytes);
+
+            var lines = Encoding.Default.GetString(bytes).Split(Environment.NewLine);
+
+            var result = new StringBuilder();            
+
+            for(int i = 1; i < lines.Length - 1; i++) //Pula a primeira e a última
+            {
+                string line = lines[i];
+
+                ContaBancariaResponse contaBancariaResponse = new ContaBancariaResponse {
+                    Agencia = line.Substring(25, 4),
+                    CarteiraPadrao = line.Substring(21,3),
+                    Conta = line.Substring(30, 6),
+                    ContaBancariaId = 1,
+                    DigitoAgencia = line.Substring(29,1),
+                    DigitoConta = line.Substring(36, 1),
+                    LocalPagamento = "",
+                    MensagemFixaPagador = "",
+                    MensagemFixaTopoBoleto = "",
+                    OperacaoConta = "",
+                    TipoCarteiraPadrao = TipoCarteira.CarteiraCobrancaSimples,
+                    TipoDistribuicao = TipoDistribuicaoBoleto.ClienteDistribui,
+                    TipoDocumento = TipoDocumento.Tradicional,
+                    TipoFormaCadastramento = TipoFormaCadastramento.ComRegistro,
+                    TipoImpressaoBoleto = TipoImpressaoBoleto.Empresa                    
+                };
+
+                Endereco endereco = new Endereco { 
+                    Bairro = "",
+                    CEP = "",
+                    Cidade = "",
+                    LogradouroComplemento = "",
+                    LogradouroEndereco = "",
+                    LogradouroNumero = "",
+                    UF = ""
+                };
+
+                BeneficiarioResponse beneficiarioResponse = new BeneficiarioResponse {
+                    BeneficiarioResponseId = i,
+                    ContaBancariaResponse = contaBancariaResponse,
+                    CPFCNPJ = "",
+                    Endereco = endereco,
+                    MostrarCNPJnoBoleto = true,
+                    Nome = "",
+                    Observacoes = ""
+                };
+
+                EnderecoResponse enderecoResponse = new EnderecoResponse {
+                    Bairro = "",
+                    CEP = line.Substring(226,8),
+                    Cidade = "",
+                    Complemento = "",
+                    EnderecoId = i,
+                    Estado = "",
+                    Logradouro = line.Substring(274,40),
+                    Numero = ""
+                };
+
+                PagadorResponse pagadorResponse = new PagadorResponse {
+                    CPFCNPJ = line.Substring(220 + (line.Substring(219,1) == "1" ? 3 : 0),14),
+                    EnderecoResponse = enderecoResponse,
+                    Nome = line.Substring(234,40),
+                    Observacoes = "",
+                    PagadorResponseId = i
+                };
+
+                DadosBoleto dadosBoleto = new DadosBoleto {
+                    BeneficiarioResponse = beneficiarioResponse,
+                    CampoLivre = "",
+                    DataEmissao = DateTime.ParseExact(line.Substring(150, 6), "ddMMyy", CultureInfo.InvariantCulture),
+                    DataProcessamento = DateTime.Now,
+                    DataVencimento = DateTime.ParseExact(line.Substring(120,6),"ddMMyy",CultureInfo.InvariantCulture),
+                    NossoNumero = line.Substring(70,11),
+                    NumeroDocumento = line.Substring(110,10),
+                    PagadorResponse = pagadorResponse,
+                    ValorTitulo = decimal.Parse(line.Substring(126,13)) / 100
+                };
+
+                var html = PostGerarBoletos(dadosBoleto, 237);
+            }            
+
+            return Ok();
         }
     }
 }
