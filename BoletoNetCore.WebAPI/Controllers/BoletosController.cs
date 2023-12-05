@@ -103,14 +103,14 @@ namespace BoletoNetCore.WebAPI.Controllers
 
                 ContaBancariaResponse contaBancariaResponse = new ContaBancariaResponse {
                     Agencia = line.Substring(25, 4),
-                    CarteiraPadrao = line.Substring(21,3),
+                    CarteiraPadrao = line.Substring(22,2),
                     Conta = line.Substring(30, 6),
                     ContaBancariaId = 1,
                     DigitoAgencia = line.Substring(29,1),
                     DigitoConta = line.Substring(36, 1),
-                    LocalPagamento = "",
-                    MensagemFixaPagador = "",
-                    MensagemFixaTopoBoleto = "",
+                    LocalPagamento = "PAGÁVEL EM QUALQUER BANCO ATÉ O VENCIMENTO",
+                    MensagemFixaPagador = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                    MensagemFixaTopoBoleto = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
                     OperacaoConta = "",
                     TipoCarteiraPadrao = TipoCarteira.CarteiraCobrancaSimples,
                     TipoDistribuicao = TipoDistribuicaoBoleto.ClienteDistribui,
@@ -132,11 +132,11 @@ namespace BoletoNetCore.WebAPI.Controllers
                 BeneficiarioResponse beneficiarioResponse = new BeneficiarioResponse {
                     BeneficiarioResponseId = i,
                     ContaBancariaResponse = contaBancariaResponse,
-                    CPFCNPJ = "",
-                    Endereco = endereco,
+                    CPFCNPJ = "33611617000100",
+                    //Endereco = endereco,
                     MostrarCNPJnoBoleto = true,
-                    Nome = "",
-                    Observacoes = ""
+                    Nome = "ACRJ - ASSOCIAÇÃO COMERCIAL DO RIO DE JANEIRO",
+                    Observacoes = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br"
                 };
 
                 EnderecoResponse enderecoResponse = new EnderecoResponse {
@@ -160,7 +160,7 @@ namespace BoletoNetCore.WebAPI.Controllers
 
                 DadosBoleto dadosBoleto = new DadosBoleto {
                     BeneficiarioResponse = beneficiarioResponse,
-                    CampoLivre = "",
+                    CampoLivre = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
                     DataEmissao = DateTime.ParseExact(line.Substring(150, 6), "ddMMyy", CultureInfo.InvariantCulture),
                     DataProcessamento = DateTime.Now,
                     DataVencimento = DateTime.ParseExact(line.Substring(120,6),"ddMMyy",CultureInfo.InvariantCulture),
