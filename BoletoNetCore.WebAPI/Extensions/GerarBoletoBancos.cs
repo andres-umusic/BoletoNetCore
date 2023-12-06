@@ -5,6 +5,11 @@ using System.Net.Mail;
 using System.Net.Mime;
 using System.Net;
 using System.Net.NetworkInformation;
+using QuestPDF.Fluent;
+using HTMLQuestPDF.Extensions;
+using BoletoNetCore.Pdf.BoletoImpressao;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Text;
 
 namespace BoletoNetCore.WebAPI.Extensions
 {
@@ -64,40 +69,11 @@ namespace BoletoNetCore.WebAPI.Extensions
         "sumaya@acrj.org.br,margareth@acrj.org.br,andres1@outlook.com",
         "ACRJ - Comunicado referente ao Boleto do mês de Dezembro 2023", "");
 
-            message.Body = @$"<p>Prezado(a) Associado(a) {boletoBancario.Boleto.Pagador.Nome.Trim()},<br />
-<br />
-Bom dia,<br />
-<br />
-Conforme comunicamos recentemente, houve um problema no boleto banc&aacute;rio de dezembro de 2023.<br />
-<br />
-Estamos emitindo um novo boleto para pagamento em anexo.<br />
-<br />
-Caso j&aacute; tenha sido efetuado favor considerar esse email.</p>
-
-<p>&nbsp;</p>
-
-<p><img src=""https://ckeditor.com/apps/ckfinder/userfiles/files/image-20231206095829-1.png"" style=""height:97px; width:85px"" /><strong>Sumay&aacute; Medina</strong></p>
-
-<p>DESOC &ndash; Departamento de Associados</p>
-
-<p>Associa&ccedil;&atilde;o Comercial do Rio de Janeiro</p>
-
-<p>(21) 2514-1281</p>
-
-<p><a href=""http://www.acrj.org.br/"">www.acrj.org.br</a></p>
-
-<p><strong><em>&ldquo;O melhor lugar do Rio para fazer neg&oacute;cios.&rdquo;</em></strong></p>
-
-<p><strong>Imprima este documento somente se necess&aacute;rio.</strong></p>
-
-<p><strong>Menos papel, mais &aacute;rvores.</strong></p>
-";
-
             message.IsBodyHtml = true;
 
             string filename = "";
 
-            string html = boletoBancario.MontaHtmlEmbedded();
+            string html = boletoBancario.MontaHtmlEmbedded(false,true,null);
 
             int index = html.IndexOf("<td class=\"imgLogo Al\"><img src=\"");
 
@@ -112,17 +88,51 @@ Caso j&aacute; tenha sido efetuado favor considerar esse email.</p>
             html = html.Replace(content,
                 image);
 
-            var renderer = new ChromePdfRenderer();
+            message.Body = @$"<p>Prezado(a) Associado(a) {boletoBancario.Boleto.Pagador.Nome.Trim()},<br />
+<br />
+Bom dia,<br />
+<br />
+Conforme comunicamos recentemente, houve um problema no boleto banc&aacute;rio de dezembro de 2023.<br />
+<br />
+Estamos emitindo um novo boleto para pagamento, o mesmo se encontra abaixo, ao final do corpo deste email.<br />
+<br />
+Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este comunicado.</p>
 
-            var pdf = renderer.RenderHtmlAsPdf(html);
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p><img src=""data:image/jpeg;base64,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"" style=""height:97px; width:85px"" /><strong>Sumay&aacute; Medina</strong></p>
+
+<p>DESOC &ndash; Departamento de Associados</p>
+
+<p>Associa&ccedil;&atilde;o Comercial do Rio de Janeiro</p>
+
+<p>(21) 2514-1281</p>
+
+<p><a href=""http://www.acrj.org.br/"">www.acrj.org.br</a></p>
+
+<p><strong><em>&ldquo;O melhor lugar do Rio para fazer neg&oacute;cios.&rdquo;</em></strong></p>
+
+<p><strong>Imprima este documento somente se necess&aacute;rio.</strong></p>
+
+<p><strong>Menos papel, mais &aacute;rvores.</strong></p>
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+{html}
+
+";
+
+            message.BodyEncoding = Encoding.UTF8;
 
             filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}.pdf";
 
-            pdf.SaveAs(filename);
+            /*Attachment attachment = new Attachment(filename);
 
-            Attachment attachment = new Attachment(filename);
-
-            message.Attachments.Add(attachment);
+            message.Attachments.Add(attachment);*/
 
             // Send the message.
             SmtpClient smtp = new SmtpClient();
