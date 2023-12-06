@@ -151,7 +151,7 @@ namespace BoletoNetCore.WebAPI.Controllers
                 };
 
                 PagadorResponse pagadorResponse = new PagadorResponse {
-                    CPFCNPJ = line.Substring(220 + (line.Substring(219,1) == "1" ? 3 : 0),14),
+                    CPFCNPJ = line.Substring(220 + (line.Substring(219,1) == "1" ? 3 : 0),11),
                     EnderecoResponse = enderecoResponse,
                     Nome = line.Substring(234,40),
                     Observacoes = "",
