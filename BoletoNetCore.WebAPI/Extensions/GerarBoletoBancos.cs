@@ -5,11 +5,11 @@ using System.Net.Mail;
 using System.Net.Mime;
 using System.Net;
 using System.Net.NetworkInformation;
-using QuestPDF.Fluent;
-using HTMLQuestPDF.Extensions;
 using BoletoNetCore.Pdf.BoletoImpressao;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Text;
+using Syncfusion.HtmlConverter;
+using Syncfusion.Pdf;
 
 namespace BoletoNetCore.WebAPI.Extensions
 {
@@ -22,7 +22,7 @@ namespace BoletoNetCore.WebAPI.Extensions
             _banco = banco;
         }
 
-        public string RetornarHtmlBoleto(DadosBoleto dadosBoleto)
+        public string RetornarHtmlBoleto(DadosBoleto dadosBoleto,string emailTo)
         {
             // 1º Beneficiarios = Quem recebe o pagamento
             Beneficiario beneficiario = new Beneficiario()
@@ -57,29 +57,30 @@ namespace BoletoNetCore.WebAPI.Extensions
 
             var email = boletoBancario.HtmlBoletoParaEnvioEmail();
 
-            EnviarEmail(boletoBancario);
+            EnviarEmail(boletoBancario,emailTo);
 
             return boletoBancario.MontaHtmlEmbedded();
         }
 
-        private void EnviarEmail(BoletoBancario boletoBancario)
+        private void EnviarEmail(BoletoBancario boletoBancario,string emailTo)
         {
-            MailMessage message = new MailMessage(
-        "andres.morales@umusic.com",
-        "sumaya@acrj.org.br,margareth@acrj.org.br,andres1@outlook.com",
-        "ACRJ - Comunicado referente ao Boleto do mês de Dezembro 2023", "");
 
-            message.IsBodyHtml = true;
+            MailMessage message = new MailMessage(
+            "sumaya@acrj.org.br",
+            emailTo,
+            "ACRJ - Comunicado referente ao Boleto do mês de Dezembro 2023", "");
+
+            message.Bcc.Add("sumaya@acrj.org.br");
 
             string filename = "";
 
-            string html = boletoBancario.MontaHtmlEmbedded(false,true,null);
+            string html = boletoBancario.MontaHtmlEmbedded(false, true, null);
 
             int index = html.IndexOf("<td class=\"imgLogo Al\"><img src=\"");
 
             index += "<td class=\"imgLogo Al\"><img src=\"".Length;
 
-            int index2 = html.IndexOf("\" /></td>",index);
+            int index2 = html.IndexOf("\" /></td>", index);
 
             string content = html.Substring(index, index2 - index);
 
@@ -88,15 +89,17 @@ namespace BoletoNetCore.WebAPI.Extensions
             html = html.Replace(content,
                 image);
 
-            message.Body = @$"<p>Prezado(a) Associado(a) {boletoBancario.Boleto.Pagador.Nome.Trim()},<br />
+            message.Body = @$"
+
+<p>Prezado(a) Associado(a) {boletoBancario.Boleto.Pagador.Nome.Trim()},<br />
 <br />
 Bom dia,<br />
 <br />
 Conforme comunicamos recentemente, houve um problema no boleto banc&aacute;rio de dezembro de 2023.<br />
 <br />
-Estamos emitindo um novo boleto para pagamento, o mesmo se encontra abaixo, ao final do corpo deste email.<br />
+Estamos emitindo um novo boleto para pagamento, o mesmo se encontra em anexo.<br />
 <br />
-Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este comunicado.</p>
+Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este email.</p>
 
 <p>&nbsp;</p>
 
@@ -118,26 +121,37 @@ Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este com
 
 <p><strong>Menos papel, mais &aacute;rvores.</strong></p>
 
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-
-{html}
-
 ";
+            message.IsBodyHtml = true;
+
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}-{DateTime.Now.ToString("yyyyMMddHHmmss")}.pdf";
+
+            //Initialize HTML to PDF converter.
+            HtmlToPdfConverter htmlConverter = new HtmlToPdfConverter();
+
+            //Convert URL to PDF.
+            PdfDocument document = htmlConverter.Convert(html, null);
+            FileStream fileStream = new FileStream(filename, FileMode.CreateNew, FileAccess.ReadWrite);
+            //Save and close the PDF document.
+            document.Save(fileStream);
+            document.Close(true);
+            fileStream.Close();
 
             message.BodyEncoding = Encoding.UTF8;
 
-            filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}.pdf";
+            Attachment attachment = new Attachment(filename);
 
-            /*Attachment attachment = new Attachment(filename);
-
-            message.Attachments.Add(attachment);*/
+            message.Attachments.Add(attachment);
 
             // Send the message.
             SmtpClient smtp = new SmtpClient();
-            smtp.Host = "smtphost.global.umusic.net";
+            smtp.Host = "email-ssl.com.br";
             smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
+            smtp.Port = 587;
+            smtp.Credentials = new NetworkCredential("sumaya@acrj.org.br", "sumaacrJ@#1012");
+            //smtp.EnableSsl = true;
             smtp.Send(message);
             message.Dispose();
             smtp.Dispose();

@@ -55,7 +55,7 @@ namespace BoletoNetCore.WebAPI.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
         [HttpPost("GerarBoletos")]
-        public IActionResult PostGerarBoletos(DadosBoleto dadosBoleto, int tipoBancoEmissor)
+        public IActionResult PostGerarBoletos(DadosBoleto dadosBoleto, int tipoBancoEmissor, string emailTo)
         {
 
             try
@@ -73,7 +73,7 @@ namespace BoletoNetCore.WebAPI.Controllers
                 }
 
                 GerarBoletoBancos gerarBoletoBancos = new GerarBoletoBancos(Banco.Instancia(metodosUteis.RetornarBancoEmissor(tipoBancoEmissor)));
-                var htmlBoleto = gerarBoletoBancos.RetornarHtmlBoleto(dadosBoleto);
+                var htmlBoleto = gerarBoletoBancos.RetornarHtmlBoleto(dadosBoleto, emailTo);
 
                 return Content(htmlBoleto, "text/html");
             }
@@ -87,91 +87,134 @@ namespace BoletoNetCore.WebAPI.Controllers
         [HttpPost("GerarBoletosPorRemessa")]
         public IActionResult GerarBoletosPorRemessa(IFormFile fileRaw)
         {
-            var stream = fileRaw.OpenReadStream();
+            FileInfo file = new FileInfo("Files/Emails.csv");
 
-            byte[] bytes = new byte[stream.Length];
+            var streamCsv = file.OpenRead();
 
-            stream.Read(bytes);
+            byte[] bytes = new byte[streamCsv.Length];
+
+            streamCsv.Read(bytes);
 
             var lines = Encoding.Default.GetString(bytes).Split(Environment.NewLine);
 
-            var result = new StringBuilder();            
+            Dictionary<string, string> dict = new Dictionary<string, string>();
 
-            for(int i = 1; i < lines.Length - 1; i++) //Pula a primeira e a última
+            foreach (var line in lines)
             {
-                string line = lines[i];
+                if (line.Contains(";"))
+                {
+                    var fields = line.Split(";");
 
-                ContaBancariaResponse contaBancariaResponse = new ContaBancariaResponse {
-                    Agencia = line.Substring(25, 4),
-                    CarteiraPadrao = line.Substring(22,2),
-                    Conta = line.Substring(30, 6),
-                    ContaBancariaId = 1,
-                    DigitoAgencia = line.Substring(29,1),
-                    DigitoConta = line.Substring(36, 1),
-                    LocalPagamento = "PAGÁVEL EM QUALQUER BANCO ATÉ O VENCIMENTO",
-                    MensagemFixaPagador = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
-                    MensagemFixaTopoBoleto = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
-                    OperacaoConta = "",
-                    TipoCarteiraPadrao = TipoCarteira.CarteiraCobrancaSimples,
-                    TipoDistribuicao = TipoDistribuicaoBoleto.ClienteDistribui,
-                    TipoDocumento = TipoDocumento.Tradicional,
-                    TipoFormaCadastramento = TipoFormaCadastramento.ComRegistro,
-                    TipoImpressaoBoleto = TipoImpressaoBoleto.Empresa                    
-                };
+                    fields[1] = fields[1].Contains(",") ? fields[1].Substring(0, fields[1].IndexOf(",")) : fields[1];
 
-                Endereco endereco = new Endereco { 
-                    Bairro = "",
-                    CEP = "",
-                    Cidade = "",
-                    LogradouroComplemento = "",
-                    LogradouroEndereco = "",
-                    LogradouroNumero = "",
-                    UF = ""
-                };
+                    dict.Add(fields[0], fields[1]);
+                }                
+            }
 
-                BeneficiarioResponse beneficiarioResponse = new BeneficiarioResponse {
-                    BeneficiarioResponseId = i,
-                    ContaBancariaResponse = contaBancariaResponse,
-                    CPFCNPJ = "33611617000100",
-                    //Endereco = endereco,
-                    MostrarCNPJnoBoleto = true,
-                    Nome = "ACRJ - ASSOCIAÇÃO COMERCIAL DO RIO DE JANEIRO",
-                    Observacoes = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br"
-                };
+            var stream = fileRaw.OpenReadStream();
 
-                EnderecoResponse enderecoResponse = new EnderecoResponse {
-                    Bairro = "",
-                    CEP = line.Substring(226,8),
-                    Cidade = "",
-                    Complemento = "",
-                    EnderecoId = i,
-                    Estado = "",
-                    Logradouro = line.Substring(274,40),
-                    Numero = ""
-                };
+            bytes = new byte[stream.Length];
 
-                PagadorResponse pagadorResponse = new PagadorResponse {
-                    CPFCNPJ = line.Substring(220 + (line.Substring(219,1) == "1" ? 3 : 0),11),
-                    EnderecoResponse = enderecoResponse,
-                    Nome = line.Substring(234,40),
-                    Observacoes = "",
-                    PagadorResponseId = i
-                };
+            stream.Read(bytes);
 
-                DadosBoleto dadosBoleto = new DadosBoleto {
-                    BeneficiarioResponse = beneficiarioResponse,
-                    CampoLivre = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
-                    DataEmissao = DateTime.ParseExact(line.Substring(150, 6), "ddMMyy", CultureInfo.InvariantCulture),
-                    DataProcessamento = DateTime.Now,
-                    DataVencimento = DateTime.ParseExact(line.Substring(120,6),"ddMMyy",CultureInfo.InvariantCulture),
-                    NossoNumero = line.Substring(70,11),
-                    NumeroDocumento = line.Substring(110,10),
-                    PagadorResponse = pagadorResponse,
-                    ValorTitulo = decimal.Parse(line.Substring(126,13)) / 100
-                };
+            lines = Encoding.Default.GetString(bytes).Split(Environment.NewLine);
 
-                var html = PostGerarBoletos(dadosBoleto, 237);
-            }            
+            var result = new StringBuilder();  
+            
+            var error = new StringBuilder();
+
+            int j = 1 + (50 * 2);
+
+            for (int i = j; i < lines.Length - 1 && i < (j+50); i++) //Pula a primeira e a última
+            {
+                try
+                {
+                    string line = lines[i];
+
+                    ContaBancariaResponse contaBancariaResponse = new ContaBancariaResponse
+                    {
+                        Agencia = line.Substring(25, 4),
+                        CarteiraPadrao = line.Substring(22, 2),
+                        Conta = line.Substring(30, 6),
+                        ContaBancariaId = 1,
+                        DigitoAgencia = line.Substring(29, 1),
+                        DigitoConta = line.Substring(36, 1),
+                        LocalPagamento = "PAGÁVEL EM QUALQUER BANCO ATÉ O VENCIMENTO",
+                        MensagemFixaPagador = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                        MensagemFixaTopoBoleto = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                        OperacaoConta = "",
+                        TipoCarteiraPadrao = TipoCarteira.CarteiraCobrancaSimples,
+                        TipoDistribuicao = TipoDistribuicaoBoleto.ClienteDistribui,
+                        TipoDocumento = TipoDocumento.Tradicional,
+                        TipoFormaCadastramento = TipoFormaCadastramento.ComRegistro,
+                        TipoImpressaoBoleto = TipoImpressaoBoleto.Empresa
+                    };
+
+                    Endereco endereco = new Endereco
+                    {
+                        Bairro = "",
+                        CEP = "",
+                        Cidade = "",
+                        LogradouroComplemento = "",
+                        LogradouroEndereco = "",
+                        LogradouroNumero = "",
+                        UF = ""
+                    };
+
+                    BeneficiarioResponse beneficiarioResponse = new BeneficiarioResponse
+                    {
+                        BeneficiarioResponseId = i,
+                        ContaBancariaResponse = contaBancariaResponse,
+                        CPFCNPJ = "33611617000100",
+                        //Endereco = endereco,
+                        MostrarCNPJnoBoleto = true,
+                        Nome = "ACRJ - ASSOCIAÇÃO COMERCIAL DO RIO DE JANEIRO",
+                        Observacoes = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br"
+                    };
+
+                    EnderecoResponse enderecoResponse = new EnderecoResponse
+                    {
+                        Bairro = "",
+                        CEP = line.Substring(226, 8),
+                        Cidade = "",
+                        Complemento = "",
+                        EnderecoId = i,
+                        Estado = "",
+                        Logradouro = line.Substring(274, 40),
+                        Numero = ""
+                    };
+
+                    PagadorResponse pagadorResponse = new PagadorResponse
+                    {
+                        CPFCNPJ = line.Substring(220 + (line.Substring(219, 1) == "1" ? 3 : 0), 11),
+                        EnderecoResponse = enderecoResponse,
+                        Nome = line.Substring(234, 40),
+                        Observacoes = "",
+                        PagadorResponseId = i
+                    };
+
+                    DadosBoleto dadosBoleto = new DadosBoleto
+                    {
+                        BeneficiarioResponse = beneficiarioResponse,
+                        CampoLivre = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                        DataEmissao = DateTime.ParseExact(line.Substring(150, 6), "ddMMyy", CultureInfo.InvariantCulture),
+                        DataProcessamento = DateTime.Now,
+                        DataVencimento = DateTime.ParseExact(line.Substring(120, 6), "ddMMyy", CultureInfo.InvariantCulture),
+                        NossoNumero = line.Substring(70, 11),
+                        NumeroDocumento = line.Substring(110, 10),
+                        PagadorResponse = pagadorResponse,
+                        ValorTitulo = decimal.Parse(line.Substring(126, 13)) / 100
+                    };
+
+                    var html = PostGerarBoletos(dadosBoleto, 237, dict.GetValueOrDefault(dadosBoleto.NumeroDocumento).Replace(",", ""));
+
+                    result.AppendLine(i.ToString());
+                }
+                catch(Exception e) 
+                {
+                    error.AppendLine(i.ToString());
+                }                
+            }                              
 
             return Ok();
         }
