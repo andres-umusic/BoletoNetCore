@@ -68,7 +68,7 @@ namespace BoletoNetCore.WebAPI.Extensions
             MailMessage message = new MailMessage(
             "sumaya@acrj.org.br",
             emailTo,
-            "ACRJ - Comunicado referente ao Boleto do mês de Dezembro 2023", "");
+            "ACRJ - Comunicado referente ao Boleto do mês de Janeiro 2024", "");
 
             message.Bcc.Add("sumaya@acrj.org.br");
 
@@ -95,7 +95,7 @@ namespace BoletoNetCore.WebAPI.Extensions
 <br />
 Bom dia,<br />
 <br />
-Conforme comunicamos recentemente, houve um problema no boleto banc&aacute;rio de dezembro de 2023.<br />
+Conforme comunicamos recentemente, houve um problema no boleto banc&aacute;rio de Janeiro de 2024.<br />
 <br />
 Estamos emitindo um novo boleto para pagamento, o mesmo se encontra em anexo.<br />
 <br />
