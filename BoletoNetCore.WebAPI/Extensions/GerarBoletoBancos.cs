@@ -22,7 +22,7 @@ namespace BoletoNetCore.WebAPI.Extensions
             _banco = banco;
         }
 
-        public string RetornarHtmlBoleto(DadosBoleto dadosBoleto,string emailTo)
+        public string RetornarHtmlBoleto(DadosBoleto dadosBoleto,string emailTo, bool sendEmail = false)
         {
             // 1º Beneficiarios = Quem recebe o pagamento
             Beneficiario beneficiario = new Beneficiario()
@@ -57,12 +57,12 @@ namespace BoletoNetCore.WebAPI.Extensions
 
             var email = boletoBancario.HtmlBoletoParaEnvioEmail();
 
-            EnviarEmail(boletoBancario,emailTo);
+            EnviarEmail(boletoBancario,emailTo,sendEmail);
 
             return boletoBancario.MontaHtmlEmbedded();
         }
 
-        private void EnviarEmail(BoletoBancario boletoBancario,string emailTo)
+        private void EnviarEmail(BoletoBancario boletoBancario,string emailTo, bool sendEmail = false)
         {
 
             MailMessage message = new MailMessage(
@@ -126,7 +126,9 @@ Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este ema
 
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
-            filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}-{DateTime.Now.ToString("yyyyMMddHHmmss")}.pdf";
+            //filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}-{DateTime.Now.ToString("yyyyMMddHHmmss")}.pdf";
+
+            filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}-{boletoBancario.Boleto.Pagador.Nome.Trim()}.pdf";
 
             //Initialize HTML to PDF converter.
             HtmlToPdfConverter htmlConverter = new HtmlToPdfConverter();
@@ -152,19 +154,10 @@ Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este ema
             smtp.Port = 587;
             smtp.Credentials = new NetworkCredential("sumaya@acrj.org.br", "sumaacrJ@#1012");
             //smtp.EnableSsl = true;
-            smtp.Send(message);
+            if(sendEmail)
+                smtp.Send(message);
             message.Dispose();
             smtp.Dispose();
-
-            try
-            {
-                smtp.Send(message);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Exception caught in CreateMessageWithMultipleViews(): {0}",
-                    ex.ToString());
-            }
         }
 
         public static Boleto GerarBoleto(IBanco iBanco, DadosBoleto dadosBoleto)

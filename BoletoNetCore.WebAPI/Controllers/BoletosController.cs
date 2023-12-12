@@ -87,7 +87,7 @@ namespace BoletoNetCore.WebAPI.Controllers
         [HttpPost("GerarBoletosPorRemessa")]
         public IActionResult GerarBoletosPorRemessa(IFormFile fileRaw)
         {
-            FileInfo file = new FileInfo("Files/Emails.csv");
+            /*FileInfo file = new FileInfo("Files/Emails.csv");
 
             var streamCsv = file.OpenRead();
 
@@ -109,23 +109,23 @@ namespace BoletoNetCore.WebAPI.Controllers
 
                     dict.Add(fields[0], fields[1]);
                 }                
-            }
+            }*/
 
             var stream = fileRaw.OpenReadStream();
 
-            bytes = new byte[stream.Length];
+            var bytes = new byte[stream.Length];
 
             stream.Read(bytes);
 
-            lines = Encoding.Default.GetString(bytes).Split(Environment.NewLine);
+            var lines = Encoding.Default.GetString(bytes).Split(Environment.NewLine);
 
-            var result = new StringBuilder();  
-            
+            var result = new StringBuilder();
+
             var error = new StringBuilder();
 
-            int j = 1 + (50 * 2);
+            int j = 1 + (50 * 1);
 
-            for (int i = j; i < lines.Length - 1 && i < (j+50); i++) //Pula a primeira e a última
+            for (int i = j; i < lines.Length - 1; i++) //Pula a primeira e a última
             {
                 try
                 {
@@ -140,8 +140,8 @@ namespace BoletoNetCore.WebAPI.Controllers
                         DigitoAgencia = line.Substring(29, 1),
                         DigitoConta = line.Substring(36, 1),
                         LocalPagamento = "PAGÁVEL EM QUALQUER BANCO ATÉ O VENCIMENTO",
-                        MensagemFixaPagador = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
-                        MensagemFixaTopoBoleto = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                        MensagemFixaPagador = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE JANEIRO / 2024.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                        MensagemFixaTopoBoleto = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE JANEIRO / 2024.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
                         OperacaoConta = "",
                         TipoCarteiraPadrao = TipoCarteira.CarteiraCobrancaSimples,
                         TipoDistribuicao = TipoDistribuicaoBoleto.ClienteDistribui,
@@ -169,7 +169,7 @@ namespace BoletoNetCore.WebAPI.Controllers
                         //Endereco = endereco,
                         MostrarCNPJnoBoleto = true,
                         Nome = "ACRJ - ASSOCIAÇÃO COMERCIAL DO RIO DE JANEIRO",
-                        Observacoes = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br"
+                        Observacoes = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE JANEIRO / 2024.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br"
                     };
 
                     EnderecoResponse enderecoResponse = new EnderecoResponse
@@ -196,7 +196,7 @@ namespace BoletoNetCore.WebAPI.Controllers
                     DadosBoleto dadosBoleto = new DadosBoleto
                     {
                         BeneficiarioResponse = beneficiarioResponse,
-                        CampoLivre = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE DEZEMBRO / 2023.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                        CampoLivre = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE JANEIRO / 2024.\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
                         DataEmissao = DateTime.ParseExact(line.Substring(150, 6), "ddMMyy", CultureInfo.InvariantCulture),
                         DataProcessamento = DateTime.Now,
                         DataVencimento = DateTime.ParseExact(line.Substring(120, 6), "ddMMyy", CultureInfo.InvariantCulture),
@@ -206,17 +206,21 @@ namespace BoletoNetCore.WebAPI.Controllers
                         ValorTitulo = decimal.Parse(line.Substring(126, 13)) / 100
                     };
 
-                    var html = PostGerarBoletos(dadosBoleto, 237, dict.GetValueOrDefault(dadosBoleto.NumeroDocumento).Replace(",", ""));
+                    string emails = "andres.morales@umusic.com";
+
+                    //emails = dict.GetValueOrDefault(dadosBoleto.NumeroDocumento).Replace(",", "");
+
+                    var html = PostGerarBoletos(dadosBoleto, 237, emails);
 
                     result.AppendLine(i.ToString());
                 }
-                catch(Exception e) 
+                catch (Exception e)
                 {
                     error.AppendLine(i.ToString());
-                }                
-            }                              
+                }
+            }
 
-            return Ok();
+            return Ok(error);
         }
     }
 }
