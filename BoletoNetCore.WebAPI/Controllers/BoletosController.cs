@@ -123,9 +123,11 @@ namespace BoletoNetCore.WebAPI.Controllers
 
             var error = new StringBuilder();
 
-            int j = 1 + (50 * 1);
+            List<string> documentos = new List<string>();
 
-            for (int i = j; i < lines.Length - 1; i++) //Pula a primeira e a última
+            //documentos.Add("CM-1142334");
+
+            for (int i = 0; i < lines.Length - 1; i++) //Pula a primeira e a última
             {
                 try
                 {
@@ -205,6 +207,11 @@ namespace BoletoNetCore.WebAPI.Controllers
                         PagadorResponse = pagadorResponse,
                         ValorTitulo = decimal.Parse(line.Substring(126, 13)) / 100
                     };
+
+                    if (documentos.Count > 0 && !documentos.Contains(dadosBoleto.NumeroDocumento))
+                    {
+                        continue;
+                    }
 
                     string emails = "andres.morales@umusic.com";
 

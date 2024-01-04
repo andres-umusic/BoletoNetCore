@@ -13,6 +13,11 @@ namespace BoletoNetCore
         public string UF { get; set; } = string.Empty;
         public string CEP { get; set; } = string.Empty;
 
+        public string GetEnderecoCompleto()
+        {
+            return (!string.IsNullOrEmpty(LogradouroEndereco) ? LogradouroEndereco + ", " : "") + (!string.IsNullOrEmpty(LogradouroNumero) ? LogradouroNumero + ", " : "") + (!string.IsNullOrEmpty(LogradouroComplemento) ? LogradouroComplemento + ", " : "") + (!string.IsNullOrEmpty(Bairro) ? Bairro + ", " : "") + (!string.IsNullOrEmpty(CEP) ? " CEP: " + CEP + ", " : "") + (!string.IsNullOrEmpty(Cidade) ? Cidade + ", " : "") + (!string.IsNullOrEmpty(UF) ? UF : "");
+        }
+
         public string FormataLogradouro(int tamanhoFinal)
         {
             var logradouroCompleto = string.Empty;

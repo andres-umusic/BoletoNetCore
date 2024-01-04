@@ -118,8 +118,8 @@ namespace BoletoNetCore
             {
                 var html = new StringBuilder();
 
-                var titulo = "Instruções de Impressão";
-                var instrucoes = "Imprimir em impressora jato de tinta (ink jet) ou laser em qualidade normal. (Não use modo econômico).<br>Utilize folha A4 (210 x 297 mm) ou Carta (216 x 279 mm) - Corte na linha indicada<br>";
+                var titulo = "<br/>!PUTIMAGE!<br/>";
+                var instrucoes = "<br/>!PUTADDRESS!<br/>";
 
                 var htmlInstrucao = GetResourceHypertext("BoletoNetCore.BoletoImpressao.Parts.Instrucoes.html");
                 html.Append(htmlInstrucao); //HTML.instrucoes
