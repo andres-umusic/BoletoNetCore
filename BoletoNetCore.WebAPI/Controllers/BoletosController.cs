@@ -7,6 +7,14 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Data;
+using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
+using System.Reflection.PortableExecutable;
+using System.Reflection.Metadata;
+using Document = BoletoNetCore.WebAPI.Models.Document;
+using BoletoNetCore.WebAPI.Repository;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace BoletoNetCore.WebAPI.Controllers
 {
@@ -15,9 +23,11 @@ namespace BoletoNetCore.WebAPI.Controllers
     public class BoletosController : ControllerBase
     {
         MetodosUteis metodosUteis = new MetodosUteis();
+        IConfiguration configuration { get; set; }
 
-        public BoletosController()
+        public BoletosController(IConfiguration configuration)
         {
+            this.configuration = configuration;
         }
 
 
@@ -105,7 +115,7 @@ namespace BoletoNetCore.WebAPI.Controllers
 
                             string taxId = "";
 
-                            if(!string.IsNullOrWhiteSpace(aux))
+                            if (!string.IsNullOrWhiteSpace(aux))
                             {
                                 foreach (char c in aux)
                                 {
@@ -114,16 +124,16 @@ namespace BoletoNetCore.WebAPI.Controllers
                                         taxId += c;
                                     }
                                 }
-                            }                            
+                            }
 
                             CustomerAddress address = new CustomerAddress
                             {
                                 Address = reader.GetString(2),
                                 City = reader.GetString(4),
                                 Id = reader.GetString(0),
-                                Name = reader.GetString(1),                            
-                                Neighbourhood = reader.GetString(3),                            
-                                PostalCode = reader.GetString(6),                            
+                                Name = reader.GetString(1),
+                                Neighbourhood = reader.GetString(3),
+                                PostalCode = reader.GetString(6),
                                 State = reader.GetString(5),
                                 TaxId = taxId
                             };
@@ -137,74 +147,31 @@ namespace BoletoNetCore.WebAPI.Controllers
         }
 
         [HttpPost("GerarBoletosPorRemessa")]
-        public IActionResult GerarBoletosPorRemessa(IFormFile remessa, IFormFile dadosClientes)
+        public IActionResult GerarBoletosPorRemessa(IFormFile file)//, IFormFile dadosClientes)
         {
-            var addresses = ReadExcelAddress(dadosClientes);
-
-            var stream = remessa.OpenReadStream();
-
-            var bytes = new byte[stream.Length];
-
-            stream.Read(bytes);
-
-            var lines = Encoding.Default.GetString(bytes).Split(Environment.NewLine);
-
+            var error = new StringBuilder();
             var result = new StringBuilder();
 
-            var error = new StringBuilder();
+            var remessa = FileInterface.GetRemessa(file, configuration);
 
-            List<string> documentos = new List<string>();
-
-            //documentos.Add("CM-1142334");
-
-            for (int i = 1; i < lines.Length - 1; i++) //Pula a primeira e a última
+            for (int i = 0; i < remessa.Linhas.Count; i++)
             {
+                var it = remessa.Linhas[i];
                 try
-                {
-                    string line = lines[i];
-
-                    var cpf = (line.Substring(219, 1) == "1");
-
-                    string taxId = line.Substring(220 + ((!cpf) ? 0 : 3), 11 + (cpf ? 0 : 3));
-
-                    int j = 0;
-
-                    for (; j < addresses.Count; j++)
-                    {
-                        if (addresses[j].TaxId == taxId)
-                        {
-                            break;
-                        }
-                    }
-
-                    CustomerAddress address = new CustomerAddress();
-
-                    try
-                    {
-                        address = addresses[j];
-                    }                    
-                    catch
-                    {
-                        address = new CustomerAddress { 
-                            Name = line.Substring(234, 40),
-                            PostalCode = line.Substring(226, 8),
-                            Address = line.Substring(274, 40)
-                        };
-                    }
-
-                    string mesReferencia = DateTime.ParseExact(line.Substring(314, 7), "MM/yyyy", CultureInfo.GetCultureInfo("pt-BR")).ToString("MMMM / yyyy").ToUpper();
+                {                    
+                    string textReference = it.TextReference;
 
                     ContaBancariaResponse contaBancariaResponse = new ContaBancariaResponse
                     {
-                        Agencia = line.Substring(25, 4),
-                        CarteiraPadrao = line.Substring(22, 2),
-                        Conta = line.Substring(30, 6),
+                        Agencia = it.BankInfo.Agency,
+                        CarteiraPadrao = it.BankInfo.DefaultWallet,
+                        Conta = it.BankInfo.Account,
                         ContaBancariaId = 1,
-                        DigitoAgencia = line.Substring(29, 1),
-                        DigitoConta = line.Substring(36, 1),
+                        DigitoAgencia = it.BankInfo.AgencyDigit,
+                        DigitoConta = it.BankInfo.AccountDigit,
                         LocalPagamento = "PAGÁVEL EM QUALQUER BANCO ATÉ O VENCIMENTO",
-                        MensagemFixaPagador = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE " + mesReferencia + ".\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
-                        MensagemFixaTopoBoleto = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE " + mesReferencia + ".\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
+                        MensagemFixaPagador = textReference,
+                        MensagemFixaTopoBoleto = textReference,
                         OperacaoConta = "",
                         TipoCarteiraPadrao = TipoCarteira.CarteiraCobrancaSimples,
                         TipoDistribuicao = TipoDistribuicaoBoleto.ClienteDistribui,
@@ -218,27 +185,26 @@ namespace BoletoNetCore.WebAPI.Controllers
                         BeneficiarioResponseId = i,
                         ContaBancariaResponse = contaBancariaResponse,
                         CPFCNPJ = "33611617000100",
-                        //Endereco = endereco,
                         MostrarCNPJnoBoleto = true,
                         Nome = "ACRJ - ASSOCIAÇÃO COMERCIAL DO RIO DE JANEIRO",
-                        Observacoes = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE " + mesReferencia + ".\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br"
-                    };                    
+                        Observacoes = textReference
+                    };
 
                     EnderecoResponse enderecoResponse = new EnderecoResponse
                     {
-                        Bairro = address.Neighbourhood,
-                        CEP = address.PostalCode,
-                        Cidade = address.City,
+                        Bairro = it.CustomerAddress.Neighbourhood,
+                        CEP = it.CustomerAddress.PostalCode,
+                        Cidade = it.CustomerAddress.City,
                         EnderecoId = i,
-                        Estado = address.State,
-                        Logradouro = line.Substring(274, 40),
+                        Estado = it.CustomerAddress.State,
+                        Logradouro = it.CustomerAddress.Address,
                     };
 
                     PagadorResponse pagadorResponse = new PagadorResponse
                     {
-                        CPFCNPJ = taxId,
+                        CPFCNPJ = it.TaxId,
                         EnderecoResponse = enderecoResponse,
-                        Nome = address.Name,
+                        Nome = it.CustomerAddress.Name,
                         Observacoes = "",
                         PagadorResponseId = i
                     };
@@ -246,36 +212,27 @@ namespace BoletoNetCore.WebAPI.Controllers
                     DadosBoleto dadosBoleto = new DadosBoleto
                     {
                         BeneficiarioResponse = beneficiarioResponse,
-                        CampoLivre = "CONTRIBUIÇÃO ASSOCIATIVA REFERENTE " + mesReferencia + ".\r\nSUA CONTRIBUIÇÃO É MUITO IMPORTANTE PARA MANUTENÇÃO E QUALIDADE DE \r\nNOSSOS SERVIÇOS. \r\nA ACRJ OFERECE SALAS COMERCIAIS PARA LOCAÇÃO DE 24 A 720 M² . \r\nTel: (21) 2514-1212 ou locacao@acrj.org.br",
-                        DataEmissao = DateTime.ParseExact(line.Substring(150, 6), "ddMMyy", CultureInfo.InvariantCulture),
+                        CampoLivre = textReference,
+                        DataEmissao = it.CreatedDate,
                         DataProcessamento = DateTime.Now,
-                        DataVencimento = DateTime.ParseExact(line.Substring(120, 6), "ddMMyy", CultureInfo.InvariantCulture),
-                        NossoNumero = line.Substring(70, 11),
-                        NumeroDocumento = line.Substring(110, 10),
+                        DataVencimento = it.DueDate,
+                        NossoNumero = it.ReferenceNumber,
+                        NumeroDocumento = it.DocumentNumber,
                         PagadorResponse = pagadorResponse,
-                        ValorTitulo = decimal.Parse(line.Substring(126, 13)) / 100
+                        ValorTitulo = it.Value
                     };
 
-                    if (documentos.Count > 0 && !documentos.Contains(dadosBoleto.NumeroDocumento))
-                    {
-                        continue;
-                    }
+                    var html = PostGerarBoletos(dadosBoleto, 237, "a@a.com");
 
-                    string emails = "andres.morales@umusic.com";
-
-                    //emails = dict.GetValueOrDefault(dadosBoleto.NumeroDocumento).Replace(",", "");
-
-                    var html = PostGerarBoletos(dadosBoleto, 237, emails);
-
-                    result.AppendLine(i.ToString());
+                    result.AppendLine(it.DocumentNumber);
                 }
+
                 catch (Exception e)
                 {
-                    error.AppendLine(i.ToString());
+                    error.AppendLine(it.DocumentNumber);
                 }
             }
-
-            return Ok(error);
+            return Ok(error.ToString());
         }
     }
 }
