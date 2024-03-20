@@ -25,7 +25,7 @@ namespace BoletoNetCore.WebAPI.Extensions
             _banco = banco;
         }
 
-        public string RetornarHtmlBoleto(DadosBoleto dadosBoleto,string emailTo, bool sendEmail = false)
+        public string RetornarHtmlBoleto(DadosBoleto dadosBoleto,string emailTo, string fileName,bool sendEmail = false)
         {
             // 1º Beneficiarios = Quem recebe o pagamento
             Beneficiario beneficiario = new Beneficiario()
@@ -60,12 +60,12 @@ namespace BoletoNetCore.WebAPI.Extensions
 
             var email = boletoBancario.HtmlBoletoParaEnvioEmail();
 
-            EnviarEmail(boletoBancario,emailTo,sendEmail);
+            EnviarEmail(boletoBancario,emailTo, fileName, sendEmail);
 
             return boletoBancario.MontaHtmlEmbedded();
         }
 
-        private void EnviarEmail(BoletoBancario boletoBancario,string emailTo, bool sendEmail = false)
+        private void EnviarEmail(BoletoBancario boletoBancario,string emailTo,string fileName, bool sendEmail = false)
         {
 
             MailMessage message = new MailMessage(
@@ -75,7 +75,7 @@ namespace BoletoNetCore.WebAPI.Extensions
 
             message.Bcc.Add("sumaya@acrj.org.br");
 
-            string filename = "";
+            string filePath = "";
 
             string html = boletoBancario.MontaHtmlEmbedded(false, true, null);
 
@@ -137,7 +137,7 @@ Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este ema
 
             //filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}-{DateTime.Now.ToString("yyyyMMddHHmmss")}.pdf";
 
-            filename = $"Files/{boletoBancario.Boleto.NumeroDocumento}-{boletoBancario.Boleto.Pagador.Nome.Trim().Replace("/","").Replace("\\","")}.pdf";
+            filePath = $"{fileName}/{boletoBancario.Boleto.NumeroDocumento}-{boletoBancario.Boleto.Pagador.Nome.Trim().Replace("/","").Replace("\\","")}.pdf";
 
             //Initialize HTML to PDF converter.
             HtmlToPdfConverter htmlConverter = new HtmlToPdfConverter();
@@ -157,7 +157,7 @@ Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este ema
             PdfDocument document = htmlConverter.Convert(html, null);
 
 
-            FileStream fileStream = new FileStream(filename, FileMode.CreateNew, FileAccess.ReadWrite);
+            FileStream fileStream = new FileStream(filePath, FileMode.CreateNew, FileAccess.ReadWrite);
             //Save and close the PDF document.
             document.Save(fileStream);
             document.Close(true);
@@ -165,7 +165,7 @@ Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsiderar este ema
 
             message.BodyEncoding = Encoding.UTF8;
 
-            Attachment attachment = new Attachment(filename);
+            Attachment attachment = new Attachment(filePath);
 
             message.Attachments.Add(attachment);
 

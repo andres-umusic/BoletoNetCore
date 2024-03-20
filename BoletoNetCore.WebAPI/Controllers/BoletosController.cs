@@ -67,7 +67,7 @@ namespace BoletoNetCore.WebAPI.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
         [HttpPost("GerarBoletos")]*/
-        private IActionResult PostGerarBoletos(DadosBoleto dadosBoleto, int tipoBancoEmissor, string emailTo)
+        private IActionResult PostGerarBoletos(DadosBoleto dadosBoleto, int tipoBancoEmissor, string emailTo, string fileName)
         {
 
             try
@@ -85,7 +85,7 @@ namespace BoletoNetCore.WebAPI.Controllers
                 }
 
                 GerarBoletoBancos gerarBoletoBancos = new GerarBoletoBancos(Banco.Instancia(metodosUteis.RetornarBancoEmissor(tipoBancoEmissor)));
-                var htmlBoleto = gerarBoletoBancos.RetornarHtmlBoleto(dadosBoleto, emailTo);
+                var htmlBoleto = gerarBoletoBancos.RetornarHtmlBoleto(dadosBoleto, emailTo,fileName);
 
                 return Content(htmlBoleto, "text/html");
             }
@@ -149,6 +149,22 @@ namespace BoletoNetCore.WebAPI.Controllers
         [HttpPost("GerarBoletosPorRemessa")]
         public IActionResult GerarBoletosPorRemessa(IFormFile file)//, IFormFile dadosClientes)
         {
+            string fileName = file.FileName.Replace(".REM","");
+            string filePath = $"Files/{DateTime.Now.ToString("yyyy-MMM",new CultureInfo("pt-BR"))}/{fileName}";
+            DirectoryInfo directoryInfo = new DirectoryInfo(filePath);
+
+            if (!directoryInfo.Exists)
+            {
+                directoryInfo.Create();
+            }
+            else
+            {
+                foreach (FileInfo it in directoryInfo.GetFiles())
+                {
+                    it.Delete();
+                }
+            }
+
             var error = new StringBuilder();
             var result = new StringBuilder();
 
@@ -222,7 +238,7 @@ namespace BoletoNetCore.WebAPI.Controllers
                         ValorTitulo = it.Value
                     };
 
-                    var html = PostGerarBoletos(dadosBoleto, 237, "a@a.com");
+                    var html = PostGerarBoletos(dadosBoleto, 237, "a@a.com",filePath);
 
                     result.AppendLine(it.DocumentNumber);
                 }
